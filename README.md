@@ -2,6 +2,8 @@
 
 This script creates a zip file with python libraries, which can be used to deploy as an AWS Lambda Layer. Optionally, you can use AWS CLI to deploy the layer to AWS.
 
+It creates a `python` folder with libraries files indicated in requirements.txt in SOURCE_FOLDER. It also copies SOURCE_FOLDER into `python` folder too.
+
 Usage:
 
     `./create_lambda_layer.sh <PYTHON_VERSION> <SOURCE_FOLDER> <OUTPUT_ZIP_FILE>`

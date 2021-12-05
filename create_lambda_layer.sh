@@ -28,7 +28,8 @@ echo "Create zip file $3 from libraries and $2"
 mkdir python
 cd python
 cp -r ../v-env/lib/$1/site-packages/* .
-cp -r ../$2/* .
+# Copy whole SOURCE_FOLDER into python folder too
+cp -r ../$2 .
 cd ..
 zip -r $3 python
 
@@ -38,6 +39,6 @@ rm -rf python
 rm -rf v-env
 
 # # Publish it to AWS
-# echo "Create lambda layer..."
-# aws lambda publish-layer-version --layer-name $2 --zip-file fileb://$3 --compatible-runtimes $1
+echo "Create lambda layer..."
+aws lambda publish-layer-version --layer-name $2 --zip-file fileb://$3 --compatible-runtimes $1
 
