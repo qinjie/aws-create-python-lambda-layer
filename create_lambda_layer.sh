@@ -61,7 +61,7 @@ mkdir python
 cd python
 cp -r ../v-env/lib/$PYTHON_VERSION/site-packages/* .
 # Copy requirements file into zip folder too as a record
-cp $REQUIREMENTS_FILE .
+cp ../$REQUIREMENTS_FILE .
 
 # Copy whole SOURCE_FOLDER into python folder too
 if [ $SOURCE_FOLDER != "" ]; then
