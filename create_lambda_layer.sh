@@ -6,8 +6,6 @@
 # Need to install virtualenv and aws-cli
 #   sudo apt install python3-virtualenv
 
-echo $#
-
 if [ $# != 1 ] && [ $# != 2 ]; then
     echo "Usage: ./create_lambda_layer.sh <SOURCE_FOLDER> [<PYTHON_VERSION>]"
     echo "Example: ./create_lambda_layer.sh pandas_layer"
@@ -41,7 +39,7 @@ else
     exit 1
 fi
 
-echo $FILEBASENAME $PYTHON_VERSION $SOURCE_FOLDER $ZIP_FILE $REQUIREMENTS_FILE
+echo "Create layer $FILEBASENAME ($PYTHON_VERSION) from $SOURCE_FOLDER/$REQUIREMENTS_FILE to $ZIP_FILE" 
 
 # Remove existing zip file
 echo "Removing existing $ZIP_FILE ./python ./v-env"
@@ -70,7 +68,9 @@ fi
 
 # # Zip folder
 cd ..
-zip -r $ZIP_FILE python
+zip -r $ZIP_FILE python \
+    --exclude python/*.zip* \
+    --exclude python/__pycache__ 
 
 # # Clean up
 echo "Clean up..." 
