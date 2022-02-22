@@ -4,25 +4,40 @@ This script creates a zip file with python libraries, which can be used to deplo
 
 It creates a `python` folder with libraries files indicated in requirements.txt in SOURCE_FOLDER. It also copies SOURCE_FOLDER into `python` folder too.
 
-Usage:
 
-    `./create_lambda_layer.sh <PYTHON_VERSION> <SOURCE_FOLDER> <OUTPUT_ZIP_FILE>`
 
-Example:
+#### Usage 1
 
-    `./create_lambda_layer.sh python3.8`
+Create with a source folder. All files in the source folder will be included in the zip file. Zip file will have the same name as the folder, i.e. `source_folder.zip`.
 
-### Create Zip File
+    ./create_lambda_layer.sh <SOURCE_FOLDER> [<PYTHON_VERSION>]
 
-1. Install python virtualenv.
+Examples:
 
-   ```bash
-   sudo apt install python3-virtualenv
-   ```
+    ./create_lambda_layer.sh pandas_layer
+    ./create_lambda_layer.sh pandas_layer python3.8
 
-2. Update `requirements.txt` file in the <SOURCE_FOLDER> with required libraries.
-3. Copy `create_lambda_layer.sh` to the parent folder of <SOURCE_FOLDER>, i.e. at the same level as <SOURCE_FOLDER>.
-4. Run the script to create a zip file containing libraries specified in `requirements.txt`.
+
+
+#### Usage 2:
+
+Create with a requirements.txt file.
+
+```
+./create_lambda_layer.sh <REQUIREMENTS_FILE> [<PYTHON_VERSION>]
+```
+
+Examples:
+
+```
+./create_lambda_layer.sh pandas_layer/requirements.txt
+```
+
+```
+./create_lambda_layer.sh pandas_layer/requirements.txt python3.8
+```
+
+
 
 ### Publish to AWS
 
