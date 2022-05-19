@@ -6,6 +6,10 @@ It creates a `python` folder with libraries files indicated in requirements.txt 
 
 
 
+The `useful-layers` contains a few common lambda layers.
+
+
+
 #### Usage 1
 
 Create with a source folder. All files in the source folder will be included in the zip file. Zip file will have the same name as the folder, i.e. `source_folder.zip`.
@@ -14,8 +18,11 @@ Create with a source folder. All files in the source folder will be included in 
 
 Examples:
 
-    ./create_lambda_layer.sh pandas_layer
-    ./create_lambda_layer.sh pandas_layer python3.8
+    ./create_lambda_layer.sh iso3166
+
+```
+./create_lambda_layer.sh iso3166 python3.8
+```
 
 
 
@@ -30,11 +37,11 @@ Create with a requirements.txt file.
 Examples:
 
 ```
-./create_lambda_layer.sh pandas_layer/requirements.txt
+./create_lambda_layer.sh iso3166/requirements.txt
 ```
 
 ```
-./create_lambda_layer.sh pandas_layer/requirements.txt python3.8
+./create_lambda_layer.sh iso3166/requirements.txt python3.8
 ```
 
 

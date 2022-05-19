@@ -68,6 +68,10 @@ if [ $SOURCE_FOLDER != "" ]; then
     cp -r ../$SOURCE_FOLDER .
 fi
 
+# Delete unused folders before zipping
+find . -type d -name "tests" -exec rm -rfv {} +
+find . -type d -name "__pycache__" -exec rm -rfv {} +
+
 # # Zip folder
 cd ..
 zip -r $ZIP_FILE python \
