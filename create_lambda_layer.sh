@@ -1,88 +1,121 @@
 #!/bin/bash
 
+# Redirect stderr to stdout
+exec 2>&1
+
 ##################
 # Create zip file to deploy an AWS Lambda Layer
 
-# Need to install virtualenv and aws-cli
-#   sudo apt install python3-virtualenv
+# Ensure required tools are installed
+#   sudo apt install python3-virtualenv awscli
 
-if [ $# != 1 ] && [ $# != 2 ]; then
-    echo "Usage: ./create_lambda_layer.sh <SOURCE_FOLDER> [<PYTHON_VERSION>]"
+# Default values for environment variables
+PYTHON_BASE_VERSION=${PYTHON_BASE_VERSION:-"python3.13"} # Default to python3.13 if not set
+LAYER_NAME=${LAYER_NAME}
+LAYER_DESCRIPTION=${LAYER_DESCRIPTION:-"A sample Lambda layer"}
+LAYER_COMPATIBLE_RUNTIMES=${LAYER_COMPATIBLE_RUNTIMES:-$PYTHON_BASE_VERSION}
+
+if [ $# -lt 1 ]; then
+    echo "Usage: ./create_lambda_layer.sh <SOURCE_FOLDER_OR_REQUIREMENTS_FILE>"
     echo "Example: ./create_lambda_layer.sh pandas_layer"
-    echo "Example: ./create_lambda_layer.sh pandas_layer python3.8"
-    echo "Usage: ./create_lambda_layer.sh <REQUIREMENTS_FILE> [<PYTHON_VERSION>]"
     echo "Example: ./create_lambda_layer.sh pandas_layer/requirements.txt"
-    echo "Example: ./create_lambda_layer.sh pandas_layer/requirements.txt python3.8"
     exit 1
-fi
-
-if [ $# == 2 ]; then
-    PYTHON_VERSION=$2
-else
-    PYTHON_VERSION="python3.8"
 fi
 
 if [ -d "$1" ]; then
     echo "$1 is a folder"
-    FILEBASENAME=$1
-    SOURCE_FOLDER=$1
-    ZIP_FILE="$1.zip"
+    FILEBASENAME=$(basename "$1")
+    SOURCE_FOLDER="$1"
+    ZIP_FILE="${FILEBASENAME}.zip"
     REQUIREMENTS_FILE="$1/requirements.txt"
 elif [ -f "$1" ]; then
     echo "$1 is a file"
     SOURCE_FOLDER=""
-    FILEBASENAME="${1%.*}"
-    ZIP_FILE="${1%.*}.zip"
-    REQUIREMENTS_FILE=$1
+    FILEBASENAME=$(basename "${1%.*}")
+    ZIP_FILE="${FILEBASENAME}.zip"
+    REQUIREMENTS_FILE="$1"
 else
-    echo "First argument must be either a folder or a requirement file"
+    echo "First argument must be either a folder or a requirements file"
     exit 1
 fi
 
-echo "Create layer $FILEBASENAME ($PYTHON_VERSION) from $SOURCE_FOLDER/$REQUIREMENTS_FILE to $ZIP_FILE" 
+for cmd in virtualenv zip; do
+    if ! command -v $cmd &>/dev/null; then
+        echo "Error: $cmd is not installed."
+        exit 1
+    fi
+done
 
-# Remove existing zip file
-echo "Removing existing $ZIP_FILE ./python ./v-env"
-rm -rf $ZIP_FILE python v-env
+echo "Create layer $LAYER_NAME ($PYTHON_BASE_VERSION) from $SOURCE_FOLDER/$REQUIREMENTS_FILE to $ZIP_FILE"
 
-# Create virtual env and install libraries
-echo "Create virtual environment for $PYTHON_VERSION"
-virtualenv --python=$PYTHON_VERSION v-env
+# Remove existing zip file and temporary directories
+echo "Removing existing $ZIP_FILE, ./python, and ./v-env"
+rm -rf "$ZIP_FILE" python v-env
+
+# Create virtual environment and install libraries
+echo "Creating virtual environment for $PYTHON_BASE_VERSION"
+virtualenv --python="$PYTHON_BASE_VERSION" v-env || { echo "Failed to create virtual environment"; exit 1; }
 source ./v-env/bin/activate
 
-echo "Install library files from $REQUIREMENTS_FILE"
-pip install -r $REQUIREMENTS_FILE 
+if [ -f "$REQUIREMENTS_FILE" ]; then
+    echo "Installing library files from $REQUIREMENTS_FILE"
+    pip install -r "$REQUIREMENTS_FILE" || { echo "Failed to install dependencies"; deactivate; exit 1; }
+else
+    echo "No requirements file provided."
+    exit 1
+fi
 deactivate
 
 # Extract and zip installed libraries
-# The folder name MUST be python and python.zip
-echo "Create zip file $ZIP_FILE from libraries"
+echo "Creating zip file $ZIP_FILE from libraries"
 mkdir python
-cd python
-cp -r ../v-env/lib/$PYTHON_VERSION/site-packages/* .
-# Copy requirements file into zip folder too as a record
-cp ../$REQUIREMENTS_FILE .
+cd python || { echo "Failed to change directory to 'python'"; exit 1; }
+cp -r ../v-env/lib/"$PYTHON_BASE_VERSION"/site-packages/* .
 
-# Copy whole SOURCE_FOLDER into python folder too
-if [ $SOURCE_FOLDER != "" ]; then
-    cp -r ../$SOURCE_FOLDER .
+# Copy requirements file into the zip folder as a record, if it exists
+if [ -f "../$REQUIREMENTS_FILE" ]; then
+    cp "../$REQUIREMENTS_FILE" .
 fi
 
-# Delete unused folders before zipping
-find . -type d -name "tests" -exec rm -rfv {} +
-find . -type d -name "__pycache__" -exec rm -rfv {} +
+# Copy the entire source folder into the 'python' directory, if specified
+if [ -n "$SOURCE_FOLDER" ]; then
+    cp -r "../${SOURCE_FOLDER%/}" .
+fi
 
-# # Zip folder
+# Remove unnecessary files before zipping
+echo "Removing unused folders (tests, __pycache__)"
+find . -type d -name "tests" -exec rm -rf {} +
+find . -type d -name "__pycache__" -exec rm -rf {} +
+
+# Zip the contents of the 'python' directory into the ZIP file
 cd ..
-zip -r $ZIP_FILE python \
-    --exclude python/*.zip* \
-    --exclude python/__pycache__ 
+zip -r "$ZIP_FILE" python \
+    --exclude 'python/*.zip*' \
+    --exclude 'python/__pycache__'
 
-# # Clean up
-echo "Clean up..." 
-rm -rf python
-rm -rf v-env
+# Clean up temporary directories and files
+echo "Cleaning up..."
+[ -d python ] && rm -rf python
+[ -d v-env ] && rm -rf v-env
 
-# # Publish it to AWS
-#echo "Create lambda layer..."
-#aws lambda publish-layer-version --layer-name $FILEBASENAME --zip-file fileb://$ZIP_FILE --compatible-runtimes $PYTHON_VERSION
+echo "Lambda layer package created: $ZIP_FILE"
+
+# Optional: Publish it to AWS Lambda using environment variables
+if [ -n "$LAYER_NAME" ]; then
+    if ! command -v aws &>/dev/null; then
+        echo "Error: aws is not installed."
+        exit 1
+    fi
+
+    echo "Publishing Lambda layer..."
+    if ! aws lambda publish-layer-version \
+        --layer-name "$LAYER_NAME" \
+        --description "$LAYER_DESCRIPTION" \
+        --zip-file fileb://"$ZIP_FILE" \
+        --compatible-runtimes "$LAYER_COMPATIBLE_RUNTIMES"; then
+        echo "Failed to publish Lambda layer"
+        exit 1
+    fi
+else
+    echo "LAYER_NAME is not set. Skipping Lambda layer publishing."
+fi
